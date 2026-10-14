@@ -227,21 +227,34 @@ score :: proc(cards: []Card) -> Score {
     return Score{total = total, soft = aces > 0}
 }
 
+hand_score :: proc(hand: Hand) -> Score {
+    local := hand
+    return score(local.cards[:local.count])
+}
+
+is_blackjack :: proc(hand: Hand) -> bool {
+    return hand.count == 2 && hand_score(hand).total == 21
+}
+
 main :: proc() {
     deck := new_deck()
+    check_standard_deck(deck.cards[:])
     hand: Hand
-    ok := deal_to(&deck, &hand)
-    assert(ok)
-
-    fmt.println("Deck cursor:", deck.next)
-    fmt.println("Hand count:", hand.count)
-    fmt.println()
-    cards := [3]Card{
-        Card{suit = .Hearts, rank = .Ace},
-        Card{suit = .Clubs, rank = .Ten},
-        Card{suit = .Spades, rank = .Ten},
+    for number := 0; number < 2; number += 1 {
+        ok := deal_to(&deck, &hand)
+        if !ok {
+            fmt.println("Could not deal opening hand.")
+            return
+        }
     }
-    value := score(cards[:])
+
+    value := hand_score(hand)
+    fmt.println("Welcome to Blackjack!")
+    fmt.println("Your hand:")
+    print_cards(hand.cards[:hand.count])
     fmt.println("Total:", value.total)
-    fmt.println("Soft:", value.soft)
+    fmt.println("Soft hand:", value.soft)
+    fmt.println("Bust:", value.total > 21)
+    fmt.println("Natural Blackjack:", is_blackjack(hand))
+    fmt.println("Cards remaining:", len(deck.cards)-deck.next)
 }  
