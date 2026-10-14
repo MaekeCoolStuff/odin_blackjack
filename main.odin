@@ -38,6 +38,11 @@ Deck :: struct {
     next: int,
 }
 
+Hand :: struct {
+    cards: [DECK_SIZE]Card,
+    count: int
+}
+
 new_deck :: proc() -> Deck {
     deck := Deck{
         cards = build_deck()
@@ -167,31 +172,23 @@ draw :: proc(deck: ^Deck) -> (Card, bool) {
     return card, true
 }
 
-main :: proc() {
-    deck := new_deck()
-    check_standard_deck(deck.cards[:])
-
-    fmt.println("Welcome to Blackjack!")
-    fmt.println("Shuffled deck checked: 52 cards.")
-    fmt.println()
-
-    first, first_ok := draw(&deck)
-    if !first_ok {
-        fmt.println("Deck exhausted.")
-        return
+add_card :: proc(hand: ^Hand, card: Card) -> bool {
+    if hand.count >= len(hand.cards) {
+        return false
     }
-    fmt.println("First card:")
-    print_card(first)
 
-    second, second_ok := draw(&deck)
-    if !second_ok {
-        fmt.println("Deck exhausted.")
-        return
-    }
-    fmt.println("Second card:")
-    print_card(second)
-
-    fmt.println()
-    fmt.println("Cards dealt:", deck.next)
-    fmt.println("Cards remaining:", len(deck.cards) - deck.next)
+    hand.cards[hand.count] = card
+    hand.count += 1
+    return true
 }
+
+main :: proc() {
+    hand: Hand
+    
+    ace := Card{suit = .Hearts, rank = .Ace}
+    ok := add_card(&hand, ace)
+    assert(ok)
+
+    fmt.println("Stored cards:", hand.count)
+    print_cards(hand.cards[:hand.count])
+}  
