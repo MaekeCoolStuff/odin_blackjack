@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:math/rand"
 
 Suit :: enum {
     Hearts,
@@ -132,14 +133,20 @@ print_cards :: proc(cards: []Card) {
     }
 }
 
-main :: proc() {
-    deck := build_deck()
-    check_standard_deck(deck[:])
+shuffle :: proc(cards: []Card) {
+    for indexToSwapTo := len(cards) -1; indexToSwapTo > 0; indexToSwapTo -= 1 {
+        cardToSwap := rand.int_max(indexToSwapTo + 1)
+        cards[indexToSwapTo], cards[cardToSwap] = cards[cardToSwap], cards[indexToSwapTo]
+    }
+}
 
-    fmt.println("Welcome to Blackjack!")
-    fmt.println("Deck size:", len(deck))
-    fmt.println("Every expected card appears once.")
-    fmt.println()
-    fmt.println("First five cards:")
-    print_cards(deck[0:5])
+main :: proc() {
+    cards := build_deck()
+    check_standard_deck(cards[:])
+
+    shuffle(cards[:])
+    check_standard_deck(cards[:])
+
+    fmt.println("First five shuffled cards:")
+    print_cards(cards[0:5])
 }
