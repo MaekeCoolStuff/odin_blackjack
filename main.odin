@@ -43,6 +43,11 @@ Hand :: struct {
     count: int
 }
 
+Score :: struct {
+    total: int,
+    soft: bool
+}
+
 new_deck :: proc() -> Deck {
     deck := Deck{
         cards = build_deck()
@@ -182,13 +187,61 @@ add_card :: proc(hand: ^Hand, card: Card) -> bool {
     return true
 }
 
+deal_to :: proc(deck: ^Deck, hand: ^Hand) -> bool {
+    if hand.count >= len(hand.cards) {
+        return false
+    }
+
+    card, ok := draw(deck)
+    if !ok {
+        return false
+    }
+    return add_card(hand, card)
+}
+
+score :: proc(cards: []Card) -> Score {
+    total, aces := 0, 0
+    for card in cards {
+        switch card.rank {
+            case .Ace:
+                total += 11
+                aces += 1
+            case .Two: total += 2
+            case .Three: total += 3
+            case .Four: total += 4
+            case .Five: total += 5
+            case .Six: total += 6
+            case .Seven: total += 7
+            case .Eight: total += 8
+            case .Nine: total += 9
+            case .Ten: total += 10
+            case .Jack, .Queen, .King:
+                total += 10
+        }
+    }
+
+    for total > 21 && aces > 0 {
+        total -= 10
+        aces -= 1
+    }
+    return Score{total = total, soft = aces > 0}
+}
+
 main :: proc() {
+    deck := new_deck()
     hand: Hand
-    
-    ace := Card{suit = .Hearts, rank = .Ace}
-    ok := add_card(&hand, ace)
+    ok := deal_to(&deck, &hand)
     assert(ok)
 
-    fmt.println("Stored cards:", hand.count)
-    print_cards(hand.cards[:hand.count])
+    fmt.println("Deck cursor:", deck.next)
+    fmt.println("Hand count:", hand.count)
+    fmt.println()
+    cards := [3]Card{
+        Card{suit = .Hearts, rank = .Ace},
+        Card{suit = .Clubs, rank = .Ten},
+        Card{suit = .Spades, rank = .Ten},
+    }
+    value := score(cards[:])
+    fmt.println("Total:", value.total)
+    fmt.println("Soft:", value.soft)
 }  
