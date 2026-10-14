@@ -33,6 +33,19 @@ Card :: struct {
 
 DECK_SIZE :: 52
 
+Deck :: struct {
+    cards: [DECK_SIZE]Card,
+    next: int,
+}
+
+new_deck :: proc() -> Deck {
+    deck := Deck{
+        cards = build_deck()
+    }
+    shuffle(deck.cards[:])
+    return deck
+}
+
 build_deck :: proc() -> [DECK_SIZE]Card {
     deck: [DECK_SIZE]Card
     next := 0
@@ -140,13 +153,45 @@ shuffle :: proc(cards: []Card) {
     }
 }
 
+advance_once :: proc(deck : ^Deck) {
+    deck.next += 1
+}
+
+draw :: proc(deck: ^Deck) -> (Card, bool) {
+    if deck.next >= len(deck.cards) {
+        return Card{}, false
+    }
+
+    card := deck.cards[deck.next]
+    deck.next += 1
+    return card, true
+}
+
 main :: proc() {
-    cards := build_deck()
-    check_standard_deck(cards[:])
+    deck := new_deck()
+    check_standard_deck(deck.cards[:])
 
-    shuffle(cards[:])
-    check_standard_deck(cards[:])
+    fmt.println("Welcome to Blackjack!")
+    fmt.println("Shuffled deck checked: 52 cards.")
+    fmt.println()
 
-    fmt.println("First five shuffled cards:")
-    print_cards(cards[0:5])
+    first, first_ok := draw(&deck)
+    if !first_ok {
+        fmt.println("Deck exhausted.")
+        return
+    }
+    fmt.println("First card:")
+    print_card(first)
+
+    second, second_ok := draw(&deck)
+    if !second_ok {
+        fmt.println("Deck exhausted.")
+        return
+    }
+    fmt.println("Second card:")
+    print_card(second)
+
+    fmt.println()
+    fmt.println("Cards dealt:", deck.next)
+    fmt.println("Cards remaining:", len(deck.cards) - deck.next)
 }
