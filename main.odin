@@ -2,6 +2,9 @@ package main
 
 import "core:fmt"
 import "core:math/rand"
+import "core:strings"
+import "core:os"
+import "core:io"
 
 Suit :: enum {
     Hearts,
@@ -24,6 +27,31 @@ Rank :: enum {
     Jack,
     Queen,
     King
+}
+
+Action :: enum {
+    Hit,
+    Stand,
+    Quit,
+    Invalid
+}
+
+Turn_Result :: enum {
+    Stood,
+    Natural,
+    Twenty_One,
+    Bust,
+    Quit,
+    Input_End,
+    Input_Failed,
+    Deal_Failed
+}
+
+Read_Status :: enum {
+    Ok,
+    End,
+    Too_Long,
+    Failed
 }
 
 Card :: struct {
@@ -236,6 +264,129 @@ is_blackjack :: proc(hand: Hand) -> bool {
     return hand.count == 2 && hand_score(hand).total == 21
 }
 
+show_hand :: proc(label: string, hand: Hand) {
+    local := hand
+    fmt.println(label)
+    print_cards(local.cards[:local.count])
+    value := hand_score(hand)
+    fmt.println("Total:", value.total, "Soft:", value.soft)
+}
+
+play_player_turn :: proc(deck: ^Deck, hand: ^Hand) -> Turn_Result {
+    for {
+        show_hand("Your hand:", hand^)
+        value := hand_score(hand^)
+
+        if is_blackjack(hand^) {
+            return .Natural
+        }
+        if value.total > 21 {
+            return .Bust
+        }
+        if value.total == 21 {
+            return .Twenty_One
+        }
+
+        action, status := read_action()
+        if status == .End {
+            return .Input_End
+        }
+        if status == .Failed {
+            return .Input_Failed
+        }
+        
+        switch action {
+            case .Hit:
+                if !deal_to(deck, hand) {
+                    return .Deal_Failed
+                }
+            case .Stand:
+                return .Stood
+            case .Quit:
+                return .Quit
+            case .Invalid:
+                continue
+        }
+    }
+}
+
+parse_action :: proc(text: string) -> Action {
+    switch strings.trim_space(text) {
+        case "h", "H", "hit", "HIT":
+            return .Hit
+        case "s", "S", "stand", "STAND":
+            return .Stand
+        case "q", "Q", "quit", "QUIT":
+            return .Quit
+    }
+    return .Invalid
+}
+
+read_line :: proc(buffer: []u8) -> (string, Read_Status) {
+    used := 0
+    too_long := false
+    byte: [1]u8
+
+    for {
+        n, err := os.read(os.stdin, byte[:]) 
+        if n == 0 {
+            if err != nil && err != io.Error.EOF {
+                return " ", .Failed
+            }
+            if too_long {
+                return " ", .Too_Long
+            }
+            if used == 0 {
+                return " ", .End
+            }
+            return string(buffer[:used]), .Ok
+        }
+        if err != nil && err != io.Error.EOF {
+            return  "", .Failed
+        }
+
+        if byte[0] == '\n' {
+            break
+        }
+        if byte[0] == '\r' {
+            continue
+        }
+        if used < len(buffer) {
+            buffer[used] = byte[0]
+            used += 1
+        } else {
+            too_long = true
+        }
+    }
+
+    if too_long {
+        return "", .Too_Long
+    }
+    return string(buffer[:used]), .Ok
+}
+
+read_action :: proc() -> (Action, Read_Status) {
+    buffer: [96]u8
+    for {
+        fmt.print("(H)it, (S)tand, or (Q)uit: ")
+        text, status := read_line(buffer[:])
+        switch status {
+            case .End, .Failed:
+                return .Invalid, status
+            case .Too_Long:
+                fmt.println("Please use a shorter command.")
+                continue
+            case .Ok:
+        }
+
+        action := parse_action(text)
+        if action != .Invalid {
+            return action, .Ok
+        }
+        fmt.println("Choose hit, stand, or quit.")
+    }
+}
+
 main :: proc() {
     deck := new_deck()
     check_standard_deck(deck.cards[:])
@@ -243,18 +394,29 @@ main :: proc() {
     for number := 0; number < 2; number += 1 {
         ok := deal_to(&deck, &hand)
         if !ok {
-            fmt.println("Could not deal opening hand.")
+            fmt.println("Could not deal an opening hand.")
             return
         }
     }
 
-    value := hand_score(hand)
-    fmt.println("Welcome to Blackjack!")
-    fmt.println("Your hand:")
-    print_cards(hand.cards[:hand.count])
-    fmt.println("Total:", value.total)
-    fmt.println("Soft hand:", value.soft)
-    fmt.println("Bust:", value.total > 21)
-    fmt.println("Natural Blackjack:", is_blackjack(hand))
-    fmt.println("Cards remaining:", len(deck.cards)-deck.next)
+    result := play_player_turn(&deck, &hand)
+    switch result {
+        case .Stood:
+            fmt.println("You stand.")
+        case .Natural:
+            fmt.println("Natural Blackjack!")
+        case .Twenty_One:
+            fmt.println("Twenty-one. Your turn is complete.")
+        case .Bust:
+            fmt.println("Bust. Your turn is complete.")
+        case .Quit:
+            fmt.println("You quit the session.")
+        case .Input_End:
+            fmt.println("Input ended. Session Closed.")
+        case .Input_Failed:
+            fmt.println("Could not read input. Session Closed.")
+        case .Deal_Failed:
+            fmt.println("Could not deal another card.")
+    }
+    
 }  
