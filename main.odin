@@ -30,6 +30,27 @@ Card :: struct {
     rank: Rank
 }
 
+DECK_SIZE :: 52
+
+build_deck :: proc() -> [DECK_SIZE]Card {
+    deck: [DECK_SIZE]Card
+    next := 0
+
+    for suit in Suit {
+        for rank in Rank {
+            assert(next < len(deck))
+            deck[next] = Card{
+                suit = suit,
+                rank = rank,
+            }
+            next += 1
+        }
+    }
+
+    assert(next == len(deck))
+    return deck
+}
+
 is_ace :: proc(card: Card) -> bool {
     return card.rank == .Ace
 }
@@ -77,32 +98,48 @@ rank_name :: proc(rank: Rank) -> string {
     return name
 }
 
+count_card :: proc(cards: []Card, wanted: Card) -> int {
+    count := 0
+    for card in cards {
+        if card.suit == wanted.suit && card.rank == wanted.rank {
+            count += 1
+        }
+    }
+    return count
+}
+
+check_standard_deck :: proc(cards: []Card) {
+    assert(len(cards) == DECK_SIZE)
+
+    for suit in Suit {
+        for rank in Rank {
+            wanted := Card{
+                suit = suit,
+                rank = rank
+            }
+            assert(count_card(cards, wanted) == 1)
+        }
+    }
+}
+
 print_card :: proc(card: Card) {
     fmt.printf("%s of %s\n", rank_name(card.rank), suit_name(card.suit))
 }
 
+print_cards :: proc(cards: []Card) {
+    for card in cards {
+        print_card(card)
+    }
+}
+
 main :: proc() {
-    fmt.println("==========================")
-    fmt.println("        BLACKJACK         ")
-    fmt.println("==========================")
-    fmt.println()
-    fmt.println("Welcome to the table!")
-    fmt.println("Let's play some cards.")
-    fmt.println()
+    deck := build_deck()
+    check_standard_deck(deck[:])
 
-    first := Card{
-        suit = .Spades,
-        rank = .Ace,
-    }
-    second := Card{
-        suit = .Hearts,
-        rank = .King,
-    }
-
-    print_card(first)
-    print_card(second)
+    fmt.println("Welcome to Blackjack!")
+    fmt.println("Deck size:", len(deck))
+    fmt.println("Every expected card appears once.")
     fmt.println()
-    fmt.println("First card is an ace:", is_ace(first))
-    fmt.println("Second card is an ace:", is_ace(second))
-    fmt.println("Same rank:", same_rank(first, second))
+    fmt.println("First five cards:")
+    print_cards(deck[0:5])
 }
